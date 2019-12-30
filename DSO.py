@@ -1,5 +1,4 @@
 # Written by Berker Bahceci, July&August 2019
-# Sanofi CI2C Turkey
 # DSO-Health report automation
 
 import pandas as pd
@@ -47,13 +46,13 @@ kredi_limiti = raw_age[[raw_header[8],raw_header[9],raw_header[19]]].copy()
 kredi_limiti.drop_duplicates(inplace=True)
 kredi_limiti = kredi_limiti.reset_index(drop=True)
 kredi_limiti = kredi_limiti.dropna(axis=0, how='any')
-kredi_limiti.rename(columns={raw_header[9]:'Müsteri'}, inplace=True)
+kredi_limiti.rename(columns={raw_header[9]:'renamed'}, inplace=True)
 
 
 
 
 # Grouped LOG table
-# Each customer has three rows of LOG: ÖDK={B,M or X}
+# Each customer has three rows of LOG
 log = raw_age[[raw_header[8], raw_header[15], raw_header[22]]].copy()
 log.fillna('X', inplace=True)
 log = log.groupby([raw_header[8], raw_header[22]]).sum().reset_index() 
@@ -62,12 +61,12 @@ log = log.groupby([raw_header[8], raw_header[22]]).sum().reset_index()
 
 
 # Initialize the summation /customer group of LOG and OAR
-log_sum = pd.DataFrame(columns=['Müsteri Kodu', 'LOG'])
-log_sum['Müsteri Kodu'] = kredi_limiti[raw_header[8]].copy()
+log_sum = pd.DataFrame(columns=['colum1', 'column2'])
+log_sum['column1'] = kredi_limiti[raw_header[8]].copy()
 log_sum.fillna(0, inplace=True)
 
-risk_sum = pd.DataFrame(columns=['Müsteri Kodu', 'Total risk'])
-risk_sum['Müsteri Kodu'] = kredi_limiti[raw_header[8]].copy()
+risk_sum = pd.DataFrame(columns=['column1', 'column3'])
+risk_sum['column1'] = kredi_limiti[raw_header[8]].copy()
 risk_sum.fillna(0, inplace=True)
 
 
@@ -78,7 +77,7 @@ risk_sum.fillna(0, inplace=True)
 # Reduce 3 rows of LOG to a single one
 for i in range(len(log)):
     
-    if log.iloc[i,1] == 'M':
+    if log.iloc[i,1] == 'Y':
         for j in range(len(log_sum)):
             if log.iloc[i,0] == log_sum.iloc[j,0]:
                 log_sum.iloc[j,1] = log.iloc[i,2]
@@ -97,13 +96,13 @@ due_raw = raw_age[vade_header].copy()
 
 
 
-# Drop drows with ÖDK='M'
+# Drop drows with criteria='M'
 # ÖDK='M' was only used in LOG calculation. They are used there. 
 # They shouldn't be taken into account for OAR and due date calculations.
 indexNames = due_raw[due_raw[raw_header[22]] == 'M' ].index
 due_raw.drop(indexNames, inplace=True)                
-due = pd.DataFrame(columns=['Müsteri Kodu1', 'Overdue','Not overdue','0-30','30-60','60-90','90-120','120-150','>150'])
-due['Müsteri Kodu1'] = kredi_limiti[raw_header[8]].copy()
+due = pd.DataFrame(columns=['column1', 'column2','column3','0-30','30-60','60-90','90-120','120-150','>150'])
+due['column1'] = kredi_limiti[raw_header[8]].copy()
 due.fillna(0, inplace=True)
 
 
@@ -135,10 +134,10 @@ for m in range(len(due)):
 
 
 # All the data is now in the table with a single row for each customer
-# Create a final dataframe with the total analysis details (Customer, OAR, Due, LOG, Credit Limit)
+# Create a final dataframe with the total analysis details
 final = pd.concat([kredi_limiti,log_sum['LOG'],risk_sum['Total risk'],due], axis=1)
-final.drop(['Müsteri Kodu1'], axis=1, inplace=True)
-final.rename(columns={raw_header[8]:'Müsteri Kodu'}, inplace=True)
+final.drop(['some_column'], axis=1, inplace=True)
+final.rename(columns={raw_header[8]:'column1'}, inplace=True)
 final.loc['Total'] = final.sum(numeric_only=True, axis=0)
 
 
@@ -149,96 +148,77 @@ final.loc['Total'] = final.sum(numeric_only=True, axis=0)
 final['Group']=""
 customer_dictionnary = pd.read_excel(customer_dict_file_path)
 names = list(customer_dictionnary.columns)
-size = customer_dictionnary.shape # Get the shape of the dataframe as a variable. So if size changes, code still works
+size = customer_dictionnary.shape 
 for i in range(size[0]):
     for j in range(size[1]):
         for k in range(len(final)-1):
             if final.iloc[k,0] == customer_dictionnary.iloc[i,j]:
                 final.iloc[k,13] = names[j]
-                
-contract=final[final.Group == 'Contract']
-contract.loc['Total']=contract.sum(numeric_only=True, axis=0)
-contract.loc['Total','Müsteri']='Total'
-contract.drop('Group', axis=1, inplace=True)
 
-alliance=final[final.Group == 'alliance']
-alliance.loc['Total']=alliance.sum(numeric_only=True, axis=0)
-alliance.loc['Total','Müsteri']='Total'
-alliance.drop('Group', axis=1, inplace=True)
+# Create different dataframes for each customer group. 
+# Each will be written in a seperate sheet.
+customer1=final[final.Group == 'customer1']
+customer1.loc['Total']=customer1.sum(numeric_only=True, axis=0)
+customer1.loc['Total','Müsteri']='Total'
+customer1.drop('Group', axis=1, inplace=True)
 
-asgroup=final[final.Group == 'as']
-asgroup.loc['Total']=asgroup.sum(numeric_only=True, axis=0)
-asgroup.loc['Total','Müsteri']='Total'
-asgroup.drop('Group', axis=1, inplace=True)
+customer2=final[final.Group == 'customer2']
+customer2.loc['Total']=customer2.sum(numeric_only=True, axis=0)
+customer2.loc['Total','Müsteri']='Total'
+customer2.drop('Group', axis=1, inplace=True)
 
-bursa=final[final.Group == 'bursa']
-bursa.drop('Group', axis=1, inplace=True)
+customer3=final[final.Group == 'customer3']
+customer3.loc['Total']=customer3.sum(numeric_only=True, axis=0)
+customer3.loc['Total','Müsteri']='Total'
+customer3.drop('Group', axis=1, inplace=True)
 
-dilek=final[final.Group == 'dilek']
-dilek.drop('Group', axis=1, inplace=True)
+customer4=final[final.Group == 'customer4']
+customer4.drop('Group', axis=1, inplace=True)
 
-gek=final[final.Group == 'guney']
-gek.drop('Group', axis=1, inplace=True)
+customer5=final[final.Group == 'customer5']
+customer5.drop('Group', axis=1, inplace=True)
 
-istkop=final[final.Group == 'ist.koop.']
-istkop.drop('Group', axis=1, inplace=True)
+customer6=final[final.Group == 'customer6']
+customer6.drop('Group', axis=1, inplace=True)
 
-nevzat=final[final.Group == 'nevzat']
-nevzat.loc['Total']=nevzat.sum(numeric_only=True, axis=0)
-nevzat.loc['Total','Müsteri']='Total'
-nevzat.drop('Group', axis=1, inplace=True)
+customer7=final[final.Group == 'customer7']
+customer7.drop('Group', axis=1, inplace=True)
 
-other=final[final.Group == 'other wholesalers']
-other.loc['Total']=other.sum(numeric_only=True, axis=0)
-other.loc['Total','Müsteri']='Total'
-other.drop('Group', axis=1, inplace=True)
+customer8=final[final.Group == 'customer8']
+customer8.loc['Total']=customer8.sum(numeric_only=True, axis=0)
+customer8.loc['Total','Müsteri']='Total'
+customer8.drop('Group', axis=1, inplace=True)
 
-selcuk=final[final.Group == 'selcuk']
-selcuk.loc['Total']=selcuk.sum(numeric_only=True, axis=0)
-selcuk.loc['Total','Müsteri']='Total'
-selcuk.drop('Group', axis=1, inplace=True)
+customer9=final[final.Group == 'customer9']
+customer9.loc['Total']=customer9.sum(numeric_only=True, axis=0)
+customer9.loc['Total','Müsteri']='Total'
+customer9.drop('Group', axis=1, inplace=True)
 
-"""tender=final[final['Müsteri Kodu'].isin(customer_dictionnary['tender'])==True]
-tender.loc['Total']=tender.sum(numeric_only=True, axis=0)
-tender.loc['Total','Müsteri']='Total'
-tender.drop('Group', axis=1, inplace=True)"""
+customer10=final[final.Group == 'customer10']
+customer10.loc['Total']=customer10.sum(numeric_only=True, axis=0)
+customer10.loc['Total','Müsteri']='Total'
+customer10.drop('Group', axis=1, inplace=True)
 
-other_tender=final[final.Group == 'other tender']
-other_tender.loc['Total']=other_tender.sum(numeric_only=True, axis=0)
-other_tender.loc['Total','Müsteri']='Total'
-other_tender.drop('Group', axis=1, inplace=True)
-
-aksel=final[final.Group == 'aksel']
-aksel.drop('Group', axis=1, inplace=True)
-
-ozsel=final[final.Group == 'ozsel']
-ozsel.loc['Total']=ozsel.sum(numeric_only=True, axis=0)
-ozsel.loc['Total','Müsteri']='Total'
-ozsel.drop('Group', axis=1, inplace=True)
 
 final.drop('Group', axis=1, inplace=True)
-customers = [contract, alliance, asgroup, bursa, dilek, gek, istkop, nevzat, other, selcuk, final, other_tender, aksel, ozsel]
+customers = [customer1, customer2, customer3, customer4, customer5, customer6, customer7, customer8, customer9, customer10]
 
 
 
 # The report template gets written
 # Each customer has a sheet with the LOG, Credit Limit, OAR and Due data
 with pd.ExcelWriter('%s.xlsx' % report_path) as writer:
-    contract.to_excel(writer, sheet_name='Contract', index=False, header=final.keys())
-    alliance.to_excel(writer, sheet_name='Alliance', index=False, header=final.keys())
-    asgroup.to_excel(writer, sheet_name='AS Group', index=False, header=final.keys())
-    bursa.to_excel(writer, sheet_name='Bursa', index=False, header=final.keys())
-    dilek.to_excel(writer, sheet_name='Dilek', index=False, header=final.keys())
-    gek.to_excel(writer, sheet_name='Güney Ecza', index=False, header=final.keys())
-    istkop.to_excel(writer, sheet_name='Ist.Koop.', index=False, header=final.keys())
-    nevzat.to_excel(writer, sheet_name='Nevzat Group', index=False, header=final.keys())
-    other.to_excel(writer, sheet_name='Other Wholesalers', index=False, header=final.keys())
-    selcuk.to_excel(writer, sheet_name='Selçuk Group', index=False, header=final.keys())
-    final.to_excel(writer, sheet_name='All customers', index=False, header=final.keys())
-   # tender.to_excel(writer, sheet_name='Tender', index=False, header=final.keys())
-    other_tender.to_excel(writer, sheet_name='Other tender', index=False, header=final.keys())
-    aksel.to_excel(writer, sheet_name='Aksel', index=False, header=final.keys())
-    ozsel.to_excel(writer, sheet_name='Özsel', index=False, header=final.keys())
+    customer1.to_excel(writer, sheet_name='customer1', index=False, header=final.keys())
+    customer2.to_excel(writer, sheet_name='customer2', index=False, header=final.keys())
+    customer3.to_excel(writer, sheet_name='customer3', index=False, header=final.keys())
+    customer4.to_excel(writer, sheet_name='customer4', index=False, header=final.keys())
+    customer5.to_excel(writer, sheet_name='customer5', index=False, header=final.keys())
+    customer6.to_excel(writer, sheet_name='customer6', index=False, header=final.keys())
+    customer7.to_excel(writer, sheet_name='customer7', index=False, header=final.keys())
+    customer8.to_excel(writer, sheet_name='customer8', index=False, header=final.keys())
+    customer9.to_excel(writer, sheet_name='customer9', index=False, header=final.keys())
+    customer10.to_excel(writer, sheet_name='customer10', index=False, header=final.keys())
+   
 
 
 
@@ -251,7 +231,7 @@ with pd.ExcelWriter('%s.xlsx' % report_path) as writer:
     
 
 # Get the Excel file which has the monthly sales data
-raw_sales = pd.read_excel(sales_file_path) #, sheet_name='SAP sales July.19') #Again, talk to Dilek and get rid of sheet name
+raw_sales = pd.read_excel(sales_file_path)
 raw_sales = raw_sales.drop(len(raw_sales)-1, axis=0)
 
 
@@ -261,8 +241,7 @@ raw_sales = raw_sales.drop(len(raw_sales)-1, axis=0)
 raw_sales_header = list(raw_sales.columns)
 sales_header = [raw_sales_header[8], raw_sales_header[13], raw_sales_header[14], raw_sales_header[2]]
 sales = raw_sales[sales_header].copy()
-sales.rename(columns={raw_sales_header[8]:'Tutar', raw_sales_header[14]:'Müsteri Adi', raw_sales_header[2]:'Tarih'}, inplace=True)
-grouped_sales = sales.groupby(['Müsteri Adi','Hesap','Tarih']).sum().reset_index()
+grouped_sales = sales.groupby(['some_column','some_column2','some_column3']).sum().reset_index()
 grouped_sales['OAR'] = ""
 
 
@@ -273,7 +252,7 @@ grouped_sales['OAR'] = ""
 group_names = list(customer_dictionnary.columns)
 grouped_sales['Group'] = ""
 
-size = customer_dictionnary.shape # Get the shape of the dataframe as a variable. So if size changes, code still works
+size = customer_dictionnary.shape 
 for i in range(size[0]):
     for j in range(size[1]):
         for k in range(len(grouped_sales)):
@@ -286,61 +265,11 @@ for i in range(size[0]):
 # Add a totals row for cumulative sales
 # This total cumulative sales will be written to update the Sales,OAR&DSO database
 grouped_sales.loc['Total'] = grouped_sales.sum(numeric_only=True, axis=0)
-grouped_sales.loc['Total','OAR'] = final.loc['Total','Total risk']
-grouped_sales.loc['Total','Müsteri Adi'] = 'Total'
-grouped_sales.rename(columns={'Hesap':'Müsteri Kodu'}, inplace=True)
+grouped_sales.loc['Total','some_column'] = final.loc['Total','some_other_column']
+grouped_sales.loc['Total','some_column7'] = 'Total'
+grouped_sales.rename(columns={'some_column':'some_column_new'}, inplace=True)
 grouped_sales.loc['Total','Group'] = 'Total'
 
-
-
-
-"""#Aksel and Ozsel are written as tender but we need them as seperate customers
-#Duplicate their rows and write groups as Aksel and Ozsel
-#This is done after total sales row is added because otherwise their data would be added twice
-row_aksel=grouped_sales[grouped_sales['Müsteri Kodu']==10167155.0].copy().reset_index()
-row_aksel.drop('index', axis=1, inplace=True)
-row_aksel['Group']='aksel'          
-row_ozsel1=grouped_sales[grouped_sales['Müsteri Kodu']==10008657.0].copy().reset_index()
-row_ozsel1.drop('index', axis=1, inplace=True)
-row_ozsel1['Group']='ozsel' 
-row_ozsel2=grouped_sales[grouped_sales['Müsteri Kodu']==10009513.0].copy().reset_index()
-if row_ozsel2.empty==False:
-    row_ozsel2=grouped_sales[grouped_sales['Müsteri Kodu']==10009513.0].copy().reset_index()
-    row_ozsel2.drop('index', axis=1, inplace=True)
-    row_ozsel2['Group']='ozsel' 
-    row_ozsel=pd.concat([row_ozsel1, row_ozsel2], ignore_index=True)
-    del[[row_ozsel1, row_ozsel2]]
-else:
-    row_ozsel=row_ozsel1
-
-
-
-
-#Concatenate Aksel and Ozsel to the grouped sales data, which is also handled and cleaned
-#Finally, the small dataframe of each customer group with monthly sales and an empty OAR column
-grouped_sales=pd.concat([grouped_sales, row_aksel, row_ozsel], ignore_index=True)"""
-grouped_sales.drop('Müsteri Kodu', axis=1, inplace=True)
-dso_sales_final = grouped_sales.groupby('Group').sum(numeric_only=True)
-new_index = ['Contract', 'alliance', 'as', 'bursa', 'dilek', 'guney', 'ist.koop.', 'nevzat', 'other wholesalers', 'selcuk', 'Total', 'other tender', 'aksel', 'ozsel']
-dso_sales_final = dso_sales_final.reindex(new_index)
-
-
-# Fill the OAR column with the data from Part-1
-dso_sales_final['OAR']=""
-dso_sales_final.loc['Contract','OAR'] = contract.loc['Total','Total risk']
-dso_sales_final.loc['alliance','OAR'] = alliance.loc['Total','Total risk']
-dso_sales_final.loc['as','OAR'] = asgroup.loc['Total','Total risk']
-dso_sales_final.loc['bursa','OAR'] = bursa.iloc[0,4]
-dso_sales_final.loc['dilek','OAR'] = dilek.iloc[0,4]
-dso_sales_final.loc['guney','OAR'] = gek.iloc[0,4]
-dso_sales_final.loc['ist.koop.','OAR'] = istkop.iloc[0,4]
-dso_sales_final.loc['nevzat','OAR'] = nevzat.loc['Total','Total risk']
-dso_sales_final.loc['other wholesalers','OAR'] = other.loc['Total','Total risk']
-dso_sales_final.loc['selcuk','OAR'] = selcuk.loc['Total','Total risk']
-dso_sales_final.loc['Total','OAR'] = final.loc['Total','Total risk']
-dso_sales_final.loc['other tender','OAR'] = other_tender.loc['Total','Total risk']
-dso_sales_final.loc['aksel','OAR'] = aksel.iloc[0,4]
-dso_sales_final.loc['ozsel','OAR'] = ozsel.loc['Total','Total risk']
 
 
 
@@ -458,8 +387,8 @@ wb = openpyxl.load_workbook('%s.xlsx' % report_path)
 sheets = wb.sheetnames
 all_customer_dso=dso_table['Unnamed: 33']
 period=dso_table['Unnamed: 0'].dt.to_period('M')
-credit_lim_total = final.iloc[len(final)-1, 2]   # Check if iloc values are true
-ar_total = final.iloc[len(final)-1, 4]           # Check if iloc values are true
+credit_lim_total = final.iloc[len(final)-1, 2]   
+ar_total = final.iloc[len(final)-1, 4]           
 pos = list(range(len(all_customer_dso)))
 width = 0.25
 min1 = min(all_customer_dso)
@@ -576,9 +505,9 @@ for i in range(0, len(sheets)):
     img2 = openpyxl.drawing.image.Image('bar%s.png' %i)
     ws.add_image(img2, ws.cell(row=16, column=16).coordinate)
     img3 = openpyxl.drawing.image.Image('risk_pie%s.png' %i)
-    ws.add_image(img3, ws.cell(row=max_rows+4, column=7).coordinate)   # Change rows 
+    ws.add_image(img3, ws.cell(row=max_rows+4, column=7).coordinate)   
     img4 = openpyxl.drawing.image.Image('cl_pie%s.png' %i)
-    ws.add_image(img4, ws.cell(row=max_rows+20, column=1).coordinate)   # Rows same as img3, change columns
+    ws.add_image(img4, ws.cell(row=max_rows+20, column=1).coordinate)   
     
     
 wb.save('%s.xlsx' % report_path)
